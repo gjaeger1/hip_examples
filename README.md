@@ -11,9 +11,13 @@ In this repository, you can find four small examples on how to use HIP. The exam
 * thrust_bounding_box: One example from the [ROCm Thrust](https://github.com/ROCmSoftwarePlatform/Thrust/blob/master/examples/bounding_box.cu) library. It shows that we can use Thrust with CUDA and HIP without changes.
 * boost_thrust_odeing: One of the examples given by the Boost library [odeint](https://www.boost.org/doc/libs/1_71_0/libs/numeric/odeint/doc/html/boost_numeric_odeint/tutorial/using_cuda__or_openmp__tbb_______via_thrust.html) for how one can execute ODE simulations on a GPU. Although the example is given with respect to Thrust and CUDA, no changes are required to work with ROCm/HIP.
 
+## Cloning
+
+As ROCm/Thrust is included as a git submodule use `git clone --recursive` to clone the submodule as well.
+
 ## Dependencies
 
-ROCm/Thrust as well as Eigen 3 are included in the directory.
+As Eigen 3 is a Mercurial repository, a copy of its 'HIP_fixes' branch is included.
 Dependencies that need to be installed separately:
 
 * boost

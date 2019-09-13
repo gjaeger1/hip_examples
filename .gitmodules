@@ -1,0 +1,3 @@
+[submodule "Thrust"]
+	path = Thrust
+	url = git@github.com:ROCmSoftwarePlatform/Thrust.git
