@@ -68,7 +68,7 @@ struct Mul : public MyClass<T>
 {
 	__host__ __device__ Mul()=default;
 	__host__ __device__ ~Mul()=default;
-	__host__ Result<T> doWorkHost(const T& a, const T& b) override {return Result<T>(a,b);} 
+	Result<T> doWorkHost(const T& a, const T& b) override {return Result<T>(a,b);} 
 	__device__ Result<T> doWorkGPU(const T& a, const T& b) {return Result<T>(a,b);} 
 };
 
