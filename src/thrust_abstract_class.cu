@@ -16,12 +16,12 @@ struct Interface
 	/**
 	 * @brief compute on GPU
 	 */
-	virtual thrust::device_vector<T> compute(const thrust::device_vector<T>& in) = 0;
+	virtual void compute(thrust::device_vector<T>& out, const thrust::device_vector<T>& in) = 0;
 
 	/**
 	 * @brief compute on CPU
 	 */
-	virtual thrust::host_vector<T> compute(const thrust::host_vector<T>& in) = 0;
+	virtual void compute(thrust::host_vector<T>& out, const thrust::host_vector<T>& in) = 0;
 };
 
 /**
@@ -41,30 +41,28 @@ struct Square: public Interface<T>
 	/**
 	 * @brief helper function to apply square
 	 */
-	template<typename T>
-	T square(const T& t)
+	template<typename VectorType>
+	void square(VectorType& out, const VectorType& t)
 	{
-		T out(t.size());
 		thrust::transform(t.begin(), t.end(), out.begin(), square_functor());
-		return out;
 	}
 
 	/**
 	 * @brief compute on GPU
 	 */
-	virtual thrust::device_vector<T> compute(const thrust::device_vector<T>& in)
+	virtual void compute(thrust::device_vector<T>& out, const thrust::device_vector<T>& in)
 	{
 		std::cout << "Calculating on GPU\n";
-		return this->square(in);
+		return this->square(out, in);
 	}
 
 	/**
 	 * @brief compute on CPU
 	 */
-	virtual thrust::host_vector<T> compute(const thrust::host_vector<T>& in)
+	virtual void compute(thrust::host_vector<T>& out, const thrust::host_vector<T>& in)
 	{
 		std::cout << "Calculating on CPU\n";
-		return this->square(in);
+		return this->square(out, in);
 	}
 };
 
@@ -85,30 +83,28 @@ struct AddOne: public Interface<T>
 	/**
 	 * @brief helper function to apply square
 	 */
-	template<typename T>
-	T add_one(const T& t)
+	template<typename VectorType>
+	void add_one(VectorType& out, const VectorType& t)
 	{
-		T out(t.size());
 		thrust::transform(t.begin(), t.end(), out.begin(), addone_functor());
-		return out;
 	}
 
 	/**
 	 * @brief compute on GPU
 	 */
-	virtual thrust::device_vector<T> compute(const thrust::device_vector<T>& in)
+	virtual void compute(thrust::device_vector<T>& out, const thrust::device_vector<T>& in)
 	{
 		std::cout << "Calculating on GPU\n";
-		return this->add_one(in);
+		return this->add_one(out, in);
 	}
 
 	/**
 	 * @brief compute on CPU
 	 */
-	virtual thrust::host_vector<T> compute(const thrust::host_vector<T>& in)
+	virtual void compute(thrust::host_vector<T>& out, const thrust::host_vector<T>& in)
 	{
 		std::cout << "Calculating on CPU\n";
-		return this->add_one(in);
+		return this->add_one(out, in);
 	}
 };
 
@@ -137,40 +133,38 @@ struct AddArb: public Interface<T>
 	/**
 	 * @brief helper function to apply square
 	 */
-	template<typename T>
-	T add_arb(const T& t)
+	template<typename VectorType>
+	void add_arb(VectorType& out, const VectorType& t)
 	{
-		T out(t.size());
 		thrust::transform(t.begin(), t.end(), out.begin(), addarb_functor(this->v));
-		return out;
 	}
 
 	/**
 	 * @brief compute on GPU
 	 */
-	virtual thrust::device_vector<T> compute(const thrust::device_vector<T>& in)
+	virtual void compute(thrust::device_vector<T>& out, const thrust::device_vector<T>& in)
 	{
 		std::cout << "Calculating on GPU\n";
-		return this->add_arb(in);
+		return this->add_arb(out, in);
 	}
 
 	/**
 	 * @brief compute on CPU
 	 */
-	virtual thrust::host_vector<T> compute(const thrust::host_vector<T>& in)
+	virtual void compute(thrust::host_vector<T>& out, const thrust::host_vector<T>& in)
 	{
 		std::cout << "Calculating on CPU\n";
-		return this->add_arb(in);
+		return this->add_arb(out, in);
 	}
 
 	T v;
 };
 
 template<typename DataType>
-void time_execution(const DataType& data, Interface<typename DataType::value_type>& interface)
+void time_execution(DataType& out, const DataType& data, Interface<typename DataType::value_type>& interface)
 {
 	auto start = std::chrono::high_resolution_clock::now();
-	interface.compute(data);
+	interface.compute(out, data);
 	auto stop = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
 
@@ -179,32 +173,47 @@ void time_execution(const DataType& data, Interface<typename DataType::value_typ
 
 int main(void)
 {
-  const size_t N = 40;
+  const size_t N = 4000000;
   thrust::default_random_engine rng;
   thrust::uniform_real_distribution<float> u01(0.0f, 1.0f);
 
   // allocate storage for points
-  thrust::device_vector<float> data_d(N);
-  thrust::host_vector<float> data_h(N);
+  using value_type = float;
+  thrust::device_vector<value_type> data_d(N);
+  thrust::device_vector<value_type> out_d(N);
+  
+  thrust::host_vector<value_type> data_h(N);
+  thrust::host_vector<value_type> out_h(N);
 
   // generate some random data
+  std::cout << "Generating " << N << " random values\n";
   for(size_t i = 0; i < N; i++)
   {
-      data_d[i] = u01(rng);
-      data_h[i] = u01(rng);
+  	  float rnd = u01(rng);
+      data_d[i] = rnd;
+      data_h[i] = rnd;
   }
 
+  auto start = std::chrono::high_resolution_clock::now();
   // AddOne
-  time_execution(data_d, AddOne());
-  time_execution(data_h, AddOne());
+  AddOne<value_type> f1;
+  time_execution(out_d, data_d, f1);
+  time_execution(out_h, data_h, f1);
 
   // Square
-  time_execution(data_d, Square());
-  time_execution(data_h, Square());
+  Square<value_type> f2;
+  time_execution(out_d, data_d, f2);
+  time_execution(out_h, data_h, f2);
 
   // AddArb
-  time_execution(data_d, AddArb(5));
-  time_execution(data_h, AddArb(5));
+  AddArb<value_type> f3(5);
+  time_execution(out_d, data_d, f3);
+  time_execution(out_h, data_h, f3);
 
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+
+  std::cout << "Overall execution took " << duration.count() << " microseconds\n";
+  
   return 0;
 }
