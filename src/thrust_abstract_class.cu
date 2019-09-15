@@ -189,10 +189,10 @@ int main(void)
   std::cout << "Generating " << N << " random values\n";
   for(size_t i = 0; i < N; i++)
   {
-  	  float rnd = u01(rng);
-      data_d[i] = rnd;
-      data_h[i] = rnd;
+  	  data_h[i] = u01(rng);
   }
+  
+  data_d = data_h;
 
   auto start = std::chrono::high_resolution_clock::now();
   // AddOne

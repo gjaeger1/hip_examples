@@ -1,3 +1,4 @@
+#include <hip/hip_runtime.h>
 #include <thrust/transform_reduce.h>
 #include <thrust/device_vector.h>
 #include <thrust/pair.h>
@@ -37,35 +38,24 @@ struct StatefulFunctor: public Interface<T>
 	/**
 	 * @brief actual functor having a state, that is, how often the functor was already called.
 	 */
+	template<typename VectorType>
 	struct stateful_functor
 	{
-		T* cnt;
+		typename VectorType::value_type* cnt;
 
-		__host__ stateful_functor(thrust::host_vector<T> const& cnts) : cnt(nullptr)
+		__device__ __host__ stateful_functor(VectorType& cnts) : cnt(nullptr)
 		{
-			std::size_t thread_id = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
-			T* raw_cnts = thrust::raw_pointer_cast(cnts.data());
-
-			if(thread_id < cnts.size())
-				this->cnt = raw_cnts + thread_id;
+			this->cnt = thrust::raw_pointer_cast(cnts.data());
 		}
-
-
-		__device__ stateful_functor(thrust::device_vector<T> const& cnts) : cnt(nullptr)
-		{
-			std::size_t thread_id = hipBlockIdx_x * hipBlockDim_x + hipThreadIdx_x;
-			T* raw_cnts = thrust::raw_pointer_cast(cnts.data());
-
-			if(thread_id < cnts.size())
-				this->cnt = raw_cnts + thread_id;
-		}
-
-		__host__ __device__ T operator()(const T& t) const
-		{
-			T res = t + this->cnt;
-			this->cnt += 1;
+		
+		template< class Tuple >
+        __host__ __device__
+        T operator()( Tuple t )
+        {
+            T res = thrust::get<1>(t) + this->cnt[thrust::get<0>(t)];
+			this->cnt[thrust::get<0>(t)] += 1;
 			return res;
-		}
+        }
 	};
 
 	/**
@@ -83,7 +73,13 @@ struct StatefulFunctor: public Interface<T>
 	virtual void compute(thrust::device_vector<T>& out, const thrust::device_vector<T>& in)
 	{
 		std::cout << "Calculating on GPU\n";
-		thrust::transform(t.begin(), t.end(), out.begin(), stateful_functor(this->states_d));
+		thrust::counting_iterator<std::size_t> first(0);
+		thrust::counting_iterator<std::size_t> last(in.size());
+		thrust::transform(
+		    thrust::make_zip_iterator( thrust::make_tuple( first , in.begin() ) ),
+            thrust::make_zip_iterator( thrust::make_tuple( last , in.end() ) ) ,
+		    out.begin(), 
+		    stateful_functor<thrust::device_vector<T>>(this->states_d));
 	}
 
 	/**
@@ -92,7 +88,13 @@ struct StatefulFunctor: public Interface<T>
 	virtual void compute(thrust::host_vector<T>& out, const thrust::host_vector<T>& in)
 	{
 		std::cout << "Calculating on CPU\n";
-		thrust::transform(t.begin(), t.end(), out.begin(), stateful_functor(this->states_h));
+		thrust::counting_iterator<std::size_t> first(0);
+		thrust::counting_iterator<std::size_t> last(in.size());
+		thrust::transform(
+		    thrust::make_zip_iterator( thrust::make_tuple( first , in.begin() ) ),
+            thrust::make_zip_iterator( thrust::make_tuple( last , in.end() ) ) ,
+		    out.begin(), 
+		    stateful_functor<thrust::host_vector<T>>(this->states_h));
 	}
 };
 
@@ -114,7 +116,7 @@ int main(void)
   thrust::uniform_real_distribution<float> u01(0.0f, 1.0f);
 
   // allocate storage for points
-  using value_type = float;
+  using value_type = double;
   thrust::device_vector<value_type> data_d(N);
   thrust::device_vector<value_type> out_d(N);
 
@@ -125,7 +127,7 @@ int main(void)
   std::cout << "Generating " << N << " random values\n";
   for(size_t i = 0; i < N; i++)
   {
-      float rnd = u01(rng);
+      value_type rnd = u01(rng);
       data_h[i] = rnd;
   }
 
@@ -133,14 +135,15 @@ int main(void)
 
   auto start = std::chrono::high_resolution_clock::now();
   // Apply first time
-  StatefulFunctor f(1.0, N);
+  StatefulFunctor<value_type> f(1.0, N);
   time_execution(out_d, data_d, f);
   time_execution(out_h, data_h, f);
 
   // check results
+  std::cout << "Checking host values...\n";
   for(size_t i = 0; i < N; i++)
   {
-      if(out_h[i] != data_h[i] + 1.0)
+      if(std::abs(out_h[i] - (data_h[i] + 1.0)) > 0.01)
       {
       	std::cout << "Host output at " << i << " should have been " << data_h[i] + 1.0 << " but was " << out_h[i] << "!\n";
       	return -1;
@@ -148,11 +151,13 @@ int main(void)
   }
 
   // check results
+  std::cout << "Checking device values...\n";
+  out_h = out_d;
   for(size_t i = 0; i < N; i++)
   {
-      if(out_d[i] != data_d[i] + 1.0)
+      if(std::abs(out_h[i] - (data_h[i] + 1.0)) > 0.01)
       {
-      	std::cout << "Device output at " << i << " should have been " << data_d[i] + 1.0 << " but was " << out_d[i] << "!\n";
+      	std::cout << "Device output at " << i << " should have been " << data_h[i] + 1.0 << " but was " << out_h[i] << "!\n";
       	return -1;
       }
   }
@@ -162,9 +167,10 @@ int main(void)
   time_execution(out_h, data_h, f);
 
   // check results
+  std::cout << "Checking host values...\n";
   for(size_t i = 0; i < N; i++)
   {
-      if(out_h[i] != data_h[i] + 2.0)
+      if(std::abs(out_h[i] - (data_h[i] + 2.0)) > 0.01)
       {
       	std::cout << "Host output at " << i << " should have been " << data_h[i] + 2.0 << " but was " << out_h[i] << "!\n";
       	return -1;
@@ -172,11 +178,13 @@ int main(void)
   }
 
   // check results
+  std::cout << "Checking device values...\n";
+  out_h = out_d;
   for(size_t i = 0; i < N; i++)
   {
-      if(out_d[i] != data_d[i] + 2.0)
+      if(std::abs(out_h[i] - (data_h[i] + 2.0)) > 0.01)
       {
-      	std::cout << "Device output at " << i << " should have been " << data_d[i] + 2.0 << " but was " << out_d[i] << "!\n";
+      	std::cout << "Device output at " << i << " should have been " << data_h[i] + 2.0 << " but was " << out_h[i] << "!\n";
       	return -1;
       }
   }
@@ -186,9 +194,10 @@ int main(void)
   time_execution(out_h, data_h, f);
 
   // check results
+  std::cout << "Checking host values...\n";
   for(size_t i = 0; i < N; i++)
   {
-      if(out_h[i] != data_h[i] + 3.0)
+      if(std::abs(out_h[i] - (data_h[i] + 3.0)) > 0.01)
       {
       	std::cout << "Host output at " << i << " should have been " << data_h[i] + 3.0 << " but was " << out_h[i] << "!\n";
       	return -1;
@@ -196,11 +205,13 @@ int main(void)
   }
 
   // check results
+  std::cout << "Checking device values...\n";
+  out_h = out_d;
   for(size_t i = 0; i < N; i++)
   {
-      if(out_d[i] != data_d[i] + 3.0)
+      if(std::abs(out_h[i] - (data_h[i] + 3.0)) > 0.01)
       {
-      	std::cout << "Device output at " << i << " should have been " << data_d[i] + 3.0 << " but was " << out_d[i] << "!\n";
+      	std::cout << "Device output at " << i << " should have been " << data_h[i] + 3.0 << " but was " << out_h[i] << "!\n";
       	return -1;
       }
   }
