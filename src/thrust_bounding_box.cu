@@ -1,4 +1,4 @@
-#include <thrust/transform_reduce.h>
+ #include <thrust/transform_reduce.h>
 #include <thrust/device_vector.h>
 #include <thrust/pair.h>
 #include <thrust/random.h>
