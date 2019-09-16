@@ -10,6 +10,9 @@ In this repository, you can find four small examples on how to use HIP. The exam
 * hip_classes_crtp: Implementing the [CRTP](https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern) design pattern to dynamically construct GPU kernel based on template programming.
 * hip_eigen: An adapted version of [square](https://github.com/ROCm-Developer-Tools/HIP/tree/master/samples/0_Intro/square) which uses the [Eigen 3 library](http://eigen.tuxfamily.org/index.php?title=Main_Page) within the GPU kernel. Note that the version stored in this repository tracks the development branch 'HIP_fixes' of the library. The default branch does not work with HIP, currently.
 * thrust_bounding_box: One example from the [ROCm Thrust](https://github.com/ROCmSoftwarePlatform/Thrust/blob/master/examples/bounding_box.cu) library. It shows that we can use Thrust with CUDA and HIP without changes.
+* thrust_abstract_class: An example on how to use abstract classes as interfaces to provide GPU and CPU operations simultaneously. 
+* thrust_stateful_functor: An example on how to use functors having states within thrust and thrust::transform.
+* rkf45: An implementation of Runge-Kutta-Fehlberg 45 method with adaptive step size that runs as a kernel on GPU.
 * boost_thrust_odeing: One of the examples given by the Boost library [odeint](https://www.boost.org/doc/libs/1_71_0/libs/numeric/odeint/doc/html/boost_numeric_odeint/tutorial/using_cuda__or_openmp__tbb_______via_thrust.html) for how one can execute ODE simulations on a GPU. Although the example is given with respect to Thrust and CUDA, no changes are required to work with ROCm/HIP.
 
 ## Cloning

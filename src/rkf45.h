@@ -112,7 +112,6 @@ public:
             
             if(isnan(base))
             {
-                exit(-1);
                 base = 10.0;
             }
             
@@ -149,7 +148,7 @@ protected:
         x = x + this->step_size*(this->b_coefficients(0,0)*k1+this->b_coefficients(0,2)*k3+this->b_coefficients(0,3)*k4+this->b_coefficients(0,4)*k5+this->b_coefficients(0,5)*k6);
         t += this->step_size;
         
-        return abs(x - x_rk4);
+        return fabs(x - x_rk4);
     }
     
 public:
