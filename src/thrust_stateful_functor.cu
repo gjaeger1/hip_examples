@@ -48,14 +48,15 @@ struct StatefulFunctor: public Interface<T>
 			this->cnt = thrust::raw_pointer_cast(cnts.data());
 		}
 		
+
 		template< class Tuple >
-        __host__ __device__
-        T operator()( Tuple t )
-        {
-            T res = thrust::get<1>(t) + this->cnt[thrust::get<0>(t)];
-			this->cnt[thrust::get<0>(t)] += 1;
-			return res;
-        }
+		__host__ __device__
+		T operator()( Tuple t )
+		{
+		    T res = thrust::get<1>(t) + this->cnt[thrust::get<0>(t)];
+            this->cnt[thrust::get<0>(t)] += 1;
+            return res;
+		}
 	};
 
 	/**
