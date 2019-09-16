@@ -1,4 +1,5 @@
 #include <iostream>
+#include <math.h>
 #include <cmath>
 #include <Eigen/Dense>
 
@@ -110,8 +111,13 @@ public:
             value_type base = this->error_tolerance/error;
             
             //printf("Base: %f\n", base);
+            #if __HIP_DEVICE_COMPILE__
+            bool vb = isnan(base);
+            #else
+            bool vb = std::isnan(base);
+            #endif
             
-            if(this->isnan(base))
+            if(vb)
             {
                 base = 10.0;
             }
@@ -125,16 +131,6 @@ public:
 
 protected:
 
-    __host__ bool isnan(const value_type& v) const
-    {
-        return std::isnan(v);
-    }
-    
-    __device__ bool isnan(const value_type& v) const
-    {
-        return isnan(v);
-    }
-    
     /**
      * @brief Apply RK 4/5 to get an approximate of the next step. The absolute difference between RK4 and RK5 is return as an local error estimate.
      */
