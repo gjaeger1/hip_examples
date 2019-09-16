@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 #include <Eigen/Dense>
 
 #ifdef USE_GPU
@@ -110,7 +111,7 @@ public:
             
             //printf("Base: %f\n", base);
             
-            if(isnan(base))
+            if(this->isnan(base))
             {
                 base = 10.0;
             }
@@ -123,6 +124,16 @@ public:
     }
 
 protected:
+
+    __host__ bool isnan(const value_type& v) const
+    {
+        return std::isnan(v);
+    }
+    
+    __device__ bool isnan(const value_type& v) const
+    {
+        return isnan(v);
+    }
     
     /**
      * @brief Apply RK 4/5 to get an approximate of the next step. The absolute difference between RK4 and RK5 is return as an local error estimate.
