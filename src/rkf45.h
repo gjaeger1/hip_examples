@@ -7,6 +7,11 @@
 #define GPU_ENABLED_FUNC
 #endif
 
+/**
+ * @brief Implements the Runge-Kutta-Fehlberg 4/5 method with adaptive step size for solving ODEs.
+ * 
+ * See https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods and https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta%E2%80%93Fehlberg_method for details
+ */
 template<typename ODE>
 class RungeKuttaFehleberg45
 {
@@ -16,6 +21,7 @@ public:
     using value_type = typename ODE::value_type;
 
 protected:
+    // types holding the RK45 coefficients
     using ATableauType = Eigen::Array<typename ODE::value_type, 5,5>;
     using BTableauType = Eigen::Array<typename ODE::value_type, 2,6>;
     using CTableauType = Eigen::Array<typename ODE::value_type, 5,1>;
@@ -25,6 +31,7 @@ protected:
     BTableauType b_coefficients;
     CTableauType c_coefficients;
 
+    // error tolerance and step size to be adapted during simulation
     value_type error_tolerance;
     value_type step_size;
 
@@ -74,21 +81,23 @@ public:
         this->c_coefficients(4) = 0.5;
     }
 
-
+    /**
+     * @brief Integrates the given ode for a single step. Given time and state are updated accordingly.
+     */
     GPU_ENABLED_FUNC void step(value_type& t, state_type& x, const ODE& ode)
     {
         bool accepted = false;
-        state_type working_x = x;
-        value_type working_t = t;
+        state_type backup_x = x;
+        value_type backup_t = t;
 
         // calculating forst approximation k1, which is independent of the step size
         state_type k1 = ode(t,x);
         while(!accepted)
         {
             // integrate
-            working_x = x;
-            working_t = t;
-            value_type error = this->integrate(k1, working_x, working_t);
+            x = backup_x;
+            t = backup_t;
+            value_type error = this->integrate(k1, t, x, ode);
 
             // do we accept the approximation?
             if(error > this->error_tolerance)
@@ -97,13 +106,28 @@ public:
             }
 
             // adapt step size
-            value_type alpha = pow(this->error_tolerance/error,1.0/6.0);
+            value_type base = this->error_tolerance/error;
+            
+            //printf("Base: %f\n", base);
+            
+            if(isnan(base))
+            {
+                exit(-1);
+                base = 10.0;
+            }
+            
+            value_type alpha = pow(base,1.0/6.0);
             this->step_size *= alpha;
+            
+            //printf("Accepted: %d, alpha: %f, step size: %f\n", accepted, alpha, this->step_size);
         }
     }
 
 protected:
-
+    
+    /**
+     * @brief Apply RK 4/5 to get an approximate of the next step. The absolute difference between RK4 and RK5 is return as an local error estimate.
+     */
     GPU_ENABLED_FUNC value_type integrate(const state_type& k1, value_type& t, state_type& x, const ODE& ode)
     {
         state_type tmp_x = x + this->step_size*this->a_coefficients(0,0)*k1;
@@ -123,7 +147,11 @@ protected:
 
         state_type x_rk4 = x + this->step_size*(this->b_coefficients(1,0)*k1+this->b_coefficients(1,2)*k3+this->b_coefficients(1,3)*k4+this->b_coefficients(1,4)*k5);
         x = x + this->step_size*(this->b_coefficients(0,0)*k1+this->b_coefficients(0,2)*k3+this->b_coefficients(0,3)*k4+this->b_coefficients(0,4)*k5+this->b_coefficients(0,5)*k6);
-
-        return x - x_rk4;
+        t += this->step_size;
+        
+        return abs(x - x_rk4);
     }
+    
+public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };

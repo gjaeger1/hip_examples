@@ -56,8 +56,8 @@ set(THRUST_STATEFUL_FUNCTOR_TARGET_NAME thrust_stateful_functor)
 set(BOOST_THRUST_ODEINT_SOURCE_FILES src/boost_thrust_odeint.cu)
 set(BOOST_THRUST_ODEINT_TARGET_NAME boost_thrust_odeint)
 
-set(RKF45_SOURCE_FILES rkf45.cu)
-set(RKF45_TARGET_NAME rkf45.cu)
+set(RKF45_SOURCE_FILES src/rkf45.cu)
+set(RKF45_TARGET_NAME rkf45)
 
 # add HIP targets
 set_source_files_properties(${HIP_EIGEN_SOURCE_FILES} PROPERTIES HIP_SOURCE_PROPERTY_FORMAT 1)
