@@ -111,7 +111,7 @@ int main(int argc, char** argv)
 		    thrust::make_zip_iterator( thrust::make_tuple( states_h.begin() , odes_h.begin() ) ),
             thrust::make_zip_iterator( thrust::make_tuple( states_h.end() , odes_h.end() ) ) ,
 		    out_states_h.begin(),
-		    Simulator<RungeKuttaFehleberg45<ode_type>>(t_end, dt, tolerance));
+		    Simulator<RungeKuttaFehlberg45<ode_type>>(t_end, dt, tolerance));
     auto stop = std::chrono::high_resolution_clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
 
@@ -124,7 +124,7 @@ int main(int argc, char** argv)
 		    thrust::make_zip_iterator( thrust::make_tuple( states_d.begin() , odes_d.begin() ) ),
             thrust::make_zip_iterator( thrust::make_tuple( states_d.end() , odes_d.end() ) ) ,
 		    out_states_d.begin(),
-		    Simulator<RungeKuttaFehleberg45<ode_type>>(t_end, dt, tolerance));
+		    Simulator<RungeKuttaFehlberg45<ode_type>>(t_end, dt, tolerance));
 	thrust::host_vector<state_type> out_states_h_d = out_states_d;
 	stop = std::chrono::high_resolution_clock::now();
 	duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);

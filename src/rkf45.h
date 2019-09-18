@@ -13,7 +13,7 @@
  * See https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods and https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta%E2%80%93Fehlberg_method for details
  */
 template<typename ODE>
-class RungeKuttaFehleberg45
+class RungeKuttaFehlberg45
 {
 public:
     using ode_type = ODE;
@@ -36,7 +36,7 @@ protected:
     value_type step_size;
 
 public:
-    GPU_ENABLED_FUNC RungeKuttaFehleberg45(const value_type& initial_tolerance, const value_type& initial_step_size) : error_tolerance(initial_tolerance), step_size(initial_step_size)
+    GPU_ENABLED_FUNC RungeKuttaFehlberg45(const value_type& initial_tolerance, const value_type& initial_step_size) : error_tolerance(initial_tolerance), step_size(initial_step_size)
     {
         // initialize coefficients
         this->a_coefficients.setZero();
