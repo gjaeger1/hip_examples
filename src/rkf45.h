@@ -1,4 +1,6 @@
 #include <iostream>
+#include <math.h>
+#include <cmath>
 #include <Eigen/Dense>
 
 #ifdef USE_GPU
@@ -109,8 +111,13 @@ public:
             value_type base = this->error_tolerance/error;
             
             //printf("Base: %f\n", base);
+            #if __HIP_DEVICE_COMPILE__
+            bool vb = isnan(base);
+            #else
+            bool vb = std::isnan(base);
+            #endif
             
-            if(isnan(base))
+            if(vb)
             {
                 base = 10.0;
             }
@@ -123,7 +130,7 @@ public:
     }
 
 protected:
-    
+
     /**
      * @brief Apply RK 4/5 to get an approximate of the next step. The absolute difference between RK4 and RK5 is return as an local error estimate.
      */
