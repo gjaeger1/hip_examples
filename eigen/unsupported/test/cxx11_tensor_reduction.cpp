@@ -57,6 +57,8 @@ template <typename Scalar,int DataLayout>
 static void test_simple_reductions() {
   Tensor<Scalar, 4, DataLayout> tensor(2, 3, 5, 7);
   tensor.setRandom();
+  // Add a little offset so that the product reductions won't be close to zero.
+  tensor += tensor.constant(Scalar(0.5f));
   array<ptrdiff_t, 2> reduction_axis2;
   reduction_axis2[0] = 1;
   reduction_axis2[1] = 3;
@@ -225,11 +227,11 @@ static void test_simple_reductions() {
     Tensor<int, 1> ints(10);
     std::iota(ints.data(), ints.data() + ints.dimension(0), 0);
 
-    TensorFixedSize<bool, Sizes<> > all;
-    all = ints.all();
-    VERIFY(!all());
-    all = (ints >= ints.constant(0)).all();
-    VERIFY(all());
+    TensorFixedSize<bool, Sizes<> > all_;
+    all_ = ints.all();
+    VERIFY(!all_());
+    all_ = (ints >= ints.constant(0)).all();
+    VERIFY(all_());
 
     TensorFixedSize<bool, Sizes<> > any;
     any = (ints > ints.constant(10)).any();
@@ -368,7 +370,7 @@ static void test_static_dims() {
   Tensor<float, 2, DataLayout> out(72, 97);
   in.setRandom();
 
-#if !EIGEN_HAS_CONSTEXPR 
+#if !EIGEN_HAS_CONSTEXPR
   array<int, 2> reduction_axis;
   reduction_axis[0] = 1;
   reduction_axis[1] = 3;

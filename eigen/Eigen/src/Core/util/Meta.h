@@ -63,6 +63,15 @@ typedef std::size_t UIntPtr;
 struct true_type {  enum { value = 1 }; };
 struct false_type { enum { value = 0 }; };
 
+template<bool Condition>
+struct bool_constant;
+
+template<>
+struct bool_constant<true> : true_type {};
+
+template<>
+struct bool_constant<false> : false_type {};
+
 template<bool Condition, typename Then, typename Else>
 struct conditional { typedef Then type; };
 
@@ -617,7 +626,7 @@ T div_ceil(const T &a, const T &b)
 template<typename X, typename Y> EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC
 bool equal_strict(const X& x,const Y& y) { return x == y; }
 
-#if !defined(EIGEN_GPU_COMPILE_PHASE) || defined(EIGEN_CONSTEXPR_ARE_DEVICE_FUNC)
+#if !defined(EIGEN_GPU_COMPILE_PHASE) || (!defined(EIGEN_CUDA_ARCH) && defined(EIGEN_CONSTEXPR_ARE_DEVICE_FUNC))
 template<> EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC
 bool equal_strict(const float& x,const float& y) { return std::equal_to<float>()(x,y); }
 
@@ -628,7 +637,7 @@ bool equal_strict(const double& x,const double& y) { return std::equal_to<double
 template<typename X, typename Y> EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC
 bool not_equal_strict(const X& x,const Y& y) { return x != y; }
 
-#if !defined(EIGEN_GPU_COMPILE_PHASE) || defined(EIGEN_CONSTEXPR_ARE_DEVICE_FUNC)
+#if !defined(EIGEN_GPU_COMPILE_PHASE) || (!defined(EIGEN_CUDA_ARCH) && defined(EIGEN_CONSTEXPR_ARE_DEVICE_FUNC))
 template<> EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC
 bool not_equal_strict(const float& x,const float& y) { return std::not_equal_to<float>()(x,y); }
 
@@ -636,8 +645,41 @@ template<> EIGEN_STRONG_INLINE EIGEN_DEVICE_FUNC
 bool not_equal_strict(const double& x,const double& y) { return std::not_equal_to<double>()(x,y); }
 #endif
 
+/** \internal extract the bits of the float \a x */
+inline unsigned int as_uint(float x)
+{
+  unsigned int ret;
+  std::memcpy(&ret, &x, sizeof(float));
+  return ret;
+}
+
 } // end namespace numext
 
 } // end namespace Eigen
+
+// Define portable (u)int{32,64} types
+#if EIGEN_HAS_CXX11
+#include <cstdint>
+namespace Eigen {
+namespace numext {
+typedef std::uint32_t uint32_t;
+typedef std::int32_t  int32_t;
+typedef std::uint64_t uint64_t;
+typedef std::int64_t  int64_t;
+}
+}
+#else
+// Without c++11, all compilers able to compile Eigen also
+// provides the C99 stdint.h header file.
+#include <stdint.h>
+namespace Eigen {
+namespace numext {
+typedef ::uint32_t uint32_t;
+typedef ::int32_t  int32_t;
+typedef ::uint64_t uint64_t;
+typedef ::int64_t  int64_t;
+}
+}
+#endif
 
 #endif // EIGEN_META_H

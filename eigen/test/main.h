@@ -17,6 +17,7 @@
 #include <sstream>
 #include <vector>
 #include <typeinfo>
+#include <functional>
 
 // The following includes of STL headers have to be done _before_ the
 // definition of macros min() and max().  The reason is that many STL
@@ -51,15 +52,17 @@
 #endif
 
 // Same for cuda_fp16.h
-#if defined(__CUDACC_VER_MAJOR__) && (__CUDACC_VER_MAJOR__ >= 9)
-#define EIGEN_TEST_CUDACC_VER  ((__CUDACC_VER_MAJOR__ * 10000) + (__CUDACC_VER_MINOR__ * 100))
-#elif defined(__CUDACC_VER__)
-#define EIGEN_TEST_CUDACC_VER __CUDACC_VER__
-#else
-#define EIGEN_TEST_CUDACC_VER 0
+#if defined(__CUDACC__) && !defined(EIGEN_NO_CUDA)
+  // Means the compiler is either nvcc or clang with CUDA enabled
+  #define EIGEN_CUDACC __CUDACC__
 #endif
-
-#if EIGEN_TEST_CUDACC_VER >= 70500
+#if defined(EIGEN_CUDACC)
+#include <cuda.h>
+  #define EIGEN_CUDA_SDK_VER (CUDA_VERSION * 10)
+#else
+  #define EIGEN_CUDA_SDK_VER 0
+#endif
+#if EIGEN_CUDA_SDK_VER >= 70500
 #include <cuda_fp16.h>
 #endif
 
@@ -67,7 +70,7 @@
 // protected by parenthesis against macro expansion, the min()/max() macros
 // are defined here and any not-parenthesized min/max call will cause a
 // compiler error.
-#if !defined(__HIPCC__)
+#if !defined(__HIPCC__) && !defined(EIGEN_USE_SYCL)
   //
   // HIP header files include the following files
   //  <thread>
@@ -96,6 +99,8 @@
 #define FORBIDDEN_IDENTIFIER (this_identifier_is_forbidden_to_avoid_clashes) this_identifier_is_forbidden_to_avoid_clashes
 // B0 is defined in POSIX header termios.h
 #define B0 FORBIDDEN_IDENTIFIER
+// `I` may be defined by complex.h:
+#define I  FORBIDDEN_IDENTIFIER
 
 // Unit tests calling Eigen's blas library must preserve the default blocking size
 // to avoid troubles.
@@ -272,7 +277,7 @@ namespace Eigen
       }
     #endif //EIGEN_EXCEPTIONS
 
-  #elif !defined(__CUDACC__) && !defined(__HIPCC__) && !defined(__SYCL_DEVICE_ONLY__) // EIGEN_DEBUG_ASSERTS
+  #elif !defined(__CUDACC__) && !defined(__HIPCC__) && !defined(SYCL_DEVICE_ONLY) // EIGEN_DEBUG_ASSERTS
     // see bug 89. The copy_bool here is working around a bug in gcc <= 4.3
     #define eigen_assert(a) \
       if( (!Eigen::internal::copy_bool(a)) && (!no_more_assert) )\
@@ -329,7 +334,7 @@ namespace Eigen
     std::cout << "Can't VERIFY_RAISES_STATIC_ASSERT( " #a " ) with exceptions disabled\n";
 #endif
 
-  #if !defined(__CUDACC__) && !defined(__HIPCC__) && !defined(__SYCL_DEVICE_ONLY__)
+  #if !defined(__CUDACC__) && !defined(__HIPCC__) && !defined(SYCL_DEVICE_ONLY)
   #define EIGEN_USE_CUSTOM_ASSERT
   #endif
 
@@ -389,6 +394,13 @@ inline void verify_impl(bool condition, const char *testname, const char *file, 
 
 namespace Eigen {
 
+template<typename T1,typename T2>
+typename internal::enable_if<internal::is_same<T1,T2>::value,bool>::type
+is_same_type(const T1&, const T2&)
+{
+  return true;
+}
+
 template<typename T> inline typename NumTraits<T>::Real test_precision() { return NumTraits<T>::dummy_precision(); }
 template<> inline float test_precision<float>() { return 1e-3f; }
 template<> inline double test_precision<double>() { return 1e-6; }
@@ -397,37 +409,29 @@ template<> inline float test_precision<std::complex<float> >() { return test_pre
 template<> inline double test_precision<std::complex<double> >() { return test_precision<double>(); }
 template<> inline long double test_precision<std::complex<long double> >() { return test_precision<long double>(); }
 
-inline bool test_isApprox(const short& a, const short& b)
-{ return internal::isApprox(a, b, test_precision<short>()); }
-inline bool test_isApprox(const unsigned short& a, const unsigned short& b)
-{ return internal::isApprox(a, b, test_precision<unsigned short>()); }
-inline bool test_isApprox(const unsigned int& a, const unsigned int& b)
-{ return internal::isApprox(a, b, test_precision<unsigned int>()); }
-inline bool test_isApprox(const long& a, const long& b)
-{ return internal::isApprox(a, b, test_precision<long>()); }
-inline bool test_isApprox(const unsigned long& a, const unsigned long& b)
-{ return internal::isApprox(a, b, test_precision<unsigned long>()); }
+#define EIGEN_TEST_SCALAR_TEST_OVERLOAD(TYPE)                             \
+  inline bool test_isApprox(TYPE a, TYPE b)                               \
+  { return internal::isApprox(a, b, test_precision<TYPE>()); }            \
+  inline bool test_isMuchSmallerThan(TYPE a, TYPE b)                      \
+  { return internal::isMuchSmallerThan(a, b, test_precision<TYPE>()); }   \
+  inline bool test_isApproxOrLessThan(TYPE a, TYPE b)                     \
+  { return internal::isApproxOrLessThan(a, b, test_precision<TYPE>()); }
 
-inline bool test_isApprox(const int& a, const int& b)
-{ return internal::isApprox(a, b, test_precision<int>()); }
-inline bool test_isMuchSmallerThan(const int& a, const int& b)
-{ return internal::isMuchSmallerThan(a, b, test_precision<int>()); }
-inline bool test_isApproxOrLessThan(const int& a, const int& b)
-{ return internal::isApproxOrLessThan(a, b, test_precision<int>()); }
+EIGEN_TEST_SCALAR_TEST_OVERLOAD(short)
+EIGEN_TEST_SCALAR_TEST_OVERLOAD(unsigned short)
+EIGEN_TEST_SCALAR_TEST_OVERLOAD(int)
+EIGEN_TEST_SCALAR_TEST_OVERLOAD(unsigned int)
+EIGEN_TEST_SCALAR_TEST_OVERLOAD(long)
+EIGEN_TEST_SCALAR_TEST_OVERLOAD(unsigned long)
+#if EIGEN_HAS_CXX11
+EIGEN_TEST_SCALAR_TEST_OVERLOAD(long long)
+EIGEN_TEST_SCALAR_TEST_OVERLOAD(unsigned long long)
+#endif
+EIGEN_TEST_SCALAR_TEST_OVERLOAD(float)
+EIGEN_TEST_SCALAR_TEST_OVERLOAD(double)
+EIGEN_TEST_SCALAR_TEST_OVERLOAD(half)
 
-inline bool test_isApprox(const float& a, const float& b)
-{ return internal::isApprox(a, b, test_precision<float>()); }
-inline bool test_isMuchSmallerThan(const float& a, const float& b)
-{ return internal::isMuchSmallerThan(a, b, test_precision<float>()); }
-inline bool test_isApproxOrLessThan(const float& a, const float& b)
-{ return internal::isApproxOrLessThan(a, b, test_precision<float>()); }
-
-inline bool test_isApprox(const double& a, const double& b)
-{ return internal::isApprox(a, b, test_precision<double>()); }
-inline bool test_isMuchSmallerThan(const double& a, const double& b)
-{ return internal::isMuchSmallerThan(a, b, test_precision<double>()); }
-inline bool test_isApproxOrLessThan(const double& a, const double& b)
-{ return internal::isApproxOrLessThan(a, b, test_precision<double>()); }
+#undef EIGEN_TEST_SCALAR_TEST_OVERLOAD
 
 #ifndef EIGEN_TEST_NO_COMPLEX
 inline bool test_isApprox(const std::complex<float>& a, const std::complex<float>& b)
@@ -463,13 +467,6 @@ inline bool test_isMuchSmallerThan(const long double& a, const long double& b)
 inline bool test_isApproxOrLessThan(const long double& a, const long double& b)
 { return internal::isApproxOrLessThan(a, b, test_precision<long double>()); }
 #endif // EIGEN_TEST_NO_LONGDOUBLE
-
-inline bool test_isApprox(const half& a, const half& b)
-{ return internal::isApprox(a, b, test_precision<half>()); }
-inline bool test_isMuchSmallerThan(const half& a, const half& b)
-{ return internal::isMuchSmallerThan(a, b, test_precision<half>()); }
-inline bool test_isApproxOrLessThan(const half& a, const half& b)
-{ return internal::isApproxOrLessThan(a, b, test_precision<half>()); }
 
 // test_relative_error returns the relative difference between a and b as a real scalar as used in isApprox.
 template<typename T1,typename T2>

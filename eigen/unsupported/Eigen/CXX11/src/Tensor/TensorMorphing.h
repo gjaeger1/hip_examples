@@ -37,7 +37,7 @@ struct traits<TensorReshapingOp<NewDimensions, XprType> > : public traits<XprTyp
 template<typename NewDimensions, typename XprType>
 struct eval<TensorReshapingOp<NewDimensions, XprType>, Eigen::Dense>
 {
-  typedef const TensorReshapingOp<NewDimensions, XprType>& type;
+  typedef const TensorReshapingOp<NewDimensions, XprType>EIGEN_DEVICE_REF type;
 };
 
 template<typename NewDimensions, typename XprType>
@@ -106,6 +106,9 @@ struct TensorEvaluator<const TensorReshapingOp<NewDimensions, ArgType>, Device>
   typedef typename XprType::Scalar Scalar;
   typedef typename XprType::CoeffReturnType CoeffReturnType;
   typedef typename PacketType<CoeffReturnType, Device>::type PacketReturnType;
+  typedef StorageMemory<CoeffReturnType, Device> Storage;
+  typedef typename Storage::Type EvaluatorPointerType;
+  typedef StorageMemory<typename internal::remove_const<CoeffReturnType>::type, Device> ConstCastStorage;
 
   static const int NumOutputDims = internal::array_size<Dimensions>::value;
   static const int NumInputDims  = internal::array_size<typename TensorEvaluator<ArgType, Device>::Dimensions>::value;
@@ -168,7 +171,7 @@ struct TensorEvaluator<const TensorReshapingOp<NewDimensions, ArgType>, Device>
 
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const Dimensions& dimensions() const { return m_dimensions; }
 
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE bool evalSubExprsIfNeeded(CoeffReturnType* data) {
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE bool evalSubExprsIfNeeded(EvaluatorPointerType data) {
     return m_impl.evalSubExprsIfNeeded(data);
   }
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void cleanup() {
@@ -195,6 +198,14 @@ struct TensorEvaluator<const TensorReshapingOp<NewDimensions, ArgType>, Device>
     m_impl.getResourceRequirements(resources);
   }
 
+  // required in block(OutputTensorBlock* output_block) const
+  // For C++03 compatibility this must be defined outside the method
+  struct BlockIteratorState {
+    Index stride;
+    Index span;
+    Index size;
+    Index count;
+  };
   // TODO(andydavis) Reduce the overhead of this function.
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void block(
       OutputTensorBlock* output_block) const {
@@ -219,12 +230,6 @@ struct TensorEvaluator<const TensorReshapingOp<NewDimensions, ArgType>, Device>
     }
 
     // Initialize output block iterator state.
-    struct BlockIteratorState {
-      Index stride;
-      Index span;
-      Index size;
-      Index count;
-    };
     array<BlockIteratorState, NumOutputDims> block_iter_state;
 
     for (Index i = 0; i < NumOutputDims; ++i) {
@@ -324,10 +329,18 @@ struct TensorEvaluator<const TensorReshapingOp<NewDimensions, ArgType>, Device>
     }
   }
 
-  EIGEN_DEVICE_FUNC typename Eigen::internal::traits<XprType>::PointerType data() const { return const_cast<Scalar*>(m_impl.data()); }
+  EIGEN_DEVICE_FUNC typename Storage::Type data() const {
+    return constCast(m_impl.data());
+  }
 
   EIGEN_DEVICE_FUNC const TensorEvaluator<ArgType, Device>& impl() const { return m_impl; }
 
+  #ifdef EIGEN_USE_SYCL
+  // binding placeholder accessors to a command group handler for SYCL
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void bind(cl::sycl::handler &cgh) const {
+    m_impl.bind(cgh);
+  }
+  #endif
  protected:
   TensorEvaluator<ArgType, Device> m_impl;
   NewDimensions m_dimensions;
@@ -402,7 +415,7 @@ struct traits<TensorSlicingOp<StartIndices, Sizes, XprType> > : public traits<Xp
 template<typename StartIndices, typename Sizes, typename XprType>
 struct eval<TensorSlicingOp<StartIndices, Sizes, XprType>, Eigen::Dense>
 {
-  typedef const TensorSlicingOp<StartIndices, Sizes, XprType>& type;
+  typedef const TensorSlicingOp<StartIndices, Sizes, XprType>EIGEN_DEVICE_REF type;
 };
 
 template<typename StartIndices, typename Sizes, typename XprType>
@@ -466,9 +479,12 @@ class TensorSlicingOp : public TensorBase<TensorSlicingOp<StartIndices, Sizes, X
 
 // Fixme: figure out the exact threshold
 namespace {
-template <typename Index, typename Device> struct MemcpyTriggerForSlicing {
+template <typename Index, typename Device, bool BlockAccess> struct MemcpyTriggerForSlicing {
   EIGEN_DEVICE_FUNC MemcpyTriggerForSlicing(const Device& device) : threshold_(2 * device.numThreads()) { }
-  EIGEN_DEVICE_FUNC bool operator ()(Index val) const { return val > threshold_; }
+  EIGEN_DEVICE_FUNC bool operator ()(Index total, Index contiguous) const {
+    const bool prefer_block_evaluation = BlockAccess && total > 32*1024;
+    return !prefer_block_evaluation && contiguous > threshold_;
+  }
 
  private:
   Index threshold_;
@@ -477,18 +493,18 @@ template <typename Index, typename Device> struct MemcpyTriggerForSlicing {
 // It is very expensive to start the memcpy kernel on GPU: we therefore only
 // use it for large copies.
 #ifdef EIGEN_USE_GPU
-template <typename Index> struct MemcpyTriggerForSlicing<Index, GpuDevice>  {
+template <typename Index, bool BlockAccess> struct MemcpyTriggerForSlicing<Index, GpuDevice, BlockAccess>  {
   EIGEN_DEVICE_FUNC MemcpyTriggerForSlicing(const GpuDevice&) { }
-  EIGEN_DEVICE_FUNC bool operator ()(Index val) const { return val > 4*1024*1024; }
+  EIGEN_DEVICE_FUNC bool operator ()(Index total, Index contiguous) const { return contiguous > 4*1024*1024; }
 };
 #endif
 
 // It is very expensive to start the memcpy kernel on GPU: we therefore only
 // use it for large copies.
 #ifdef EIGEN_USE_SYCL
-template <typename Index> struct MemcpyTriggerForSlicing<Index, const Eigen::SyclDevice>  {
+template <typename Index, bool BlockAccess> struct MemcpyTriggerForSlicing<Index, Eigen::SyclDevice, BlockAccess>  {
   EIGEN_DEVICE_FUNC MemcpyTriggerForSlicing(const SyclDevice&) { }
-  EIGEN_DEVICE_FUNC bool operator ()(Index val) const { return val > 4*1024*1024; }
+  EIGEN_DEVICE_FUNC bool operator ()(Index total, Index contiguous) const { return contiguous > 4*1024*1024; }
 };
 #endif
 
@@ -506,6 +522,9 @@ struct TensorEvaluator<const TensorSlicingOp<StartIndices, Sizes, ArgType>, Devi
   typedef typename XprType::CoeffReturnType CoeffReturnType;
   typedef typename PacketType<CoeffReturnType, Device>::type PacketReturnType;
   typedef Sizes Dimensions;
+  typedef StorageMemory<CoeffReturnType, Device> Storage;
+  typedef StorageMemory<typename internal::remove_const<CoeffReturnType>::type, Device> ConstCastStorage;
+  typedef typename Storage::Type EvaluatorPointerType;
 
   enum {
     // Alignment can't be guaranteed at compile time since it depends on the
@@ -573,9 +592,10 @@ struct TensorEvaluator<const TensorSlicingOp<StartIndices, Sizes, ArgType>, Devi
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const Dimensions& dimensions() const { return m_dimensions; }
 
 
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE bool evalSubExprsIfNeeded(CoeffReturnType* data) {
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE bool evalSubExprsIfNeeded(EvaluatorPointerType data) {
     m_impl.evalSubExprsIfNeeded(NULL);
-    if (!NumTraits<typename internal::remove_const<Scalar>::type>::RequireInitialization && data && m_impl.data()) {
+    if (!NumTraits<typename internal::remove_const<Scalar>::type>::RequireInitialization
+        && data && m_impl.data()) {
       Index contiguous_values = 1;
       if (static_cast<int>(Layout) == static_cast<int>(ColMajor)) {
         for (int i = 0; i < NumDims; ++i) {
@@ -593,12 +613,12 @@ struct TensorEvaluator<const TensorSlicingOp<StartIndices, Sizes, ArgType>, Devi
         }
       }
       // Use memcpy if it's going to be faster than using the regular evaluation.
-      const MemcpyTriggerForSlicing<Index, Device> trigger(m_device);
-      if (trigger(contiguous_values)) {
-        Scalar* src = (Scalar*)m_impl.data();
+      const MemcpyTriggerForSlicing<Index, Device, BlockAccess> trigger(m_device);
+      if (trigger(internal::array_prod(dimensions()), contiguous_values)) {
+        EvaluatorPointerType src = (EvaluatorPointerType)m_impl.data();
         for (Index i = 0; i < internal::array_prod(dimensions()); i += contiguous_values) {
           Index offset = srcCoeff(i);
-          m_device.memcpy((void*)(data+i), src+offset, contiguous_values * sizeof(Scalar));
+          m_device.memcpy((void*)(m_device.get(data + i)), m_device.get(src+offset), contiguous_values * sizeof(Scalar));
         }
         return false;
       }
@@ -633,6 +653,7 @@ struct TensorEvaluator<const TensorSlicingOp<StartIndices, Sizes, ArgType>, Devi
     Index inputIndices[] = {0, 0};
     Index indices[] = {index, index + packetSize - 1};
     if (static_cast<int>(Layout) == static_cast<int>(ColMajor)) {
+      EIGEN_UNROLL_LOOP
       for (int i = NumDims - 1; i > 0; --i) {
         const Index idx0 = indices[0] / m_fastOutputStrides[i];
         const Index idx1 = indices[1] / m_fastOutputStrides[i];
@@ -644,6 +665,7 @@ struct TensorEvaluator<const TensorSlicingOp<StartIndices, Sizes, ArgType>, Devi
       inputIndices[0] += (indices[0] + m_offsets[0]);
       inputIndices[1] += (indices[1] + m_offsets[0]);
     } else {
+      EIGEN_UNROLL_LOOP
       for (int i = 0; i < NumDims - 1; ++i) {
         const Index idx0 = indices[0] / m_fastOutputStrides[i];
         const Index idx1 = indices[1] / m_fastOutputStrides[i];
@@ -663,6 +685,7 @@ struct TensorEvaluator<const TensorSlicingOp<StartIndices, Sizes, ArgType>, Devi
       EIGEN_ALIGN_MAX typename internal::remove_const<CoeffReturnType>::type values[packetSize];
       values[0] = m_impl.coeff(inputIndices[0]);
       values[packetSize-1] = m_impl.coeff(inputIndices[1]);
+      EIGEN_UNROLL_LOOP
       for (int i = 1; i < packetSize-1; ++i) {
         values[i] = coeff(index+i);
       }
@@ -694,8 +717,8 @@ struct TensorEvaluator<const TensorSlicingOp<StartIndices, Sizes, ArgType>, Devi
     m_impl.block(&input_block);
   }
 
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE typename Eigen::internal::traits<XprType>::PointerType data() const {
-    Scalar* result = const_cast<Scalar*>(m_impl.data());
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE typename Storage::Type data() const {
+    typename Storage::Type result = constCast(m_impl.data());
     if (result) {
       Index offset = 0;
       if (static_cast<int>(Layout) == static_cast<int>(ColMajor)) {
@@ -729,19 +752,19 @@ struct TensorEvaluator<const TensorSlicingOp<StartIndices, Sizes, ArgType>, Devi
     }
     return NULL;
   }
-  /// used by sycl
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const TensorEvaluator<ArgType, Device>& impl() const{
-    return m_impl;
+#ifdef EIGEN_USE_SYCL
+  // binding placeholder accessors to a command group handler for SYCL
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void bind(cl::sycl::handler &cgh) const {
+    m_impl.bind(cgh);
   }
-  /// used by sycl
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const StartIndices& startIndices() const{
-    return m_offsets;
-  }
+#endif
+
  protected:
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Index srcCoeff(Index index) const
   {
     Index inputIndex = 0;
     if (static_cast<int>(Layout) == static_cast<int>(ColMajor)) {
+      EIGEN_UNROLL_LOOP
       for (int i = NumDims - 1; i > 0; --i) {
         const Index idx = index / m_fastOutputStrides[i];
         inputIndex += (idx + m_offsets[i]) * m_inputStrides[i];
@@ -749,6 +772,7 @@ struct TensorEvaluator<const TensorSlicingOp<StartIndices, Sizes, ArgType>, Devi
       }
       inputIndex += (index + m_offsets[0]);
     } else {
+      EIGEN_UNROLL_LOOP
       for (int i = 0; i < NumDims - 1; ++i) {
         const Index idx = index / m_fastOutputStrides[i];
         inputIndex += (idx + m_offsets[i]) * m_inputStrides[i];
@@ -763,7 +787,7 @@ struct TensorEvaluator<const TensorSlicingOp<StartIndices, Sizes, ArgType>, Devi
   array<internal::TensorIntDivisor<Index>, NumDims> m_fastOutputStrides;
   array<Index, NumDims> m_inputStrides;
   TensorEvaluator<ArgType, Device> m_impl;
-  const Device& m_device;
+  const Device EIGEN_DEVICE_REF m_device;
   Dimensions m_dimensions;
   bool m_is_identity;
   const StartIndices m_offsets;
@@ -825,6 +849,7 @@ struct TensorEvaluator<TensorSlicingOp<StartIndices, Sizes, ArgType>, Device>
     Index inputIndices[] = {0, 0};
     Index indices[] = {index, index + packetSize - 1};
     if (static_cast<int>(Layout) == static_cast<int>(ColMajor)) {
+      EIGEN_UNROLL_LOOP
       for (int i = NumDims - 1; i > 0; --i) {
         const Index idx0 = indices[0] / this->m_fastOutputStrides[i];
         const Index idx1 = indices[1] / this->m_fastOutputStrides[i];
@@ -836,6 +861,7 @@ struct TensorEvaluator<TensorSlicingOp<StartIndices, Sizes, ArgType>, Device>
       inputIndices[0] += (indices[0] + this->m_offsets[0]);
       inputIndices[1] += (indices[1] + this->m_offsets[0]);
     } else {
+      EIGEN_UNROLL_LOOP
       for (int i = 0; i < NumDims - 1; ++i) {
         const Index idx0 = indices[0] / this->m_fastOutputStrides[i];
         const Index idx1 = indices[1] / this->m_fastOutputStrides[i];
@@ -855,6 +881,7 @@ struct TensorEvaluator<TensorSlicingOp<StartIndices, Sizes, ArgType>, Device>
       internal::pstore<CoeffReturnType, PacketReturnType>(values, x);
       this->m_impl.coeffRef(inputIndices[0]) = values[0];
       this->m_impl.coeffRef(inputIndices[1]) = values[packetSize-1];
+      EIGEN_UNROLL_LOOP
       for (int i = 1; i < packetSize-1; ++i) {
         this->coeffRef(index+i) = values[i];
       }
@@ -888,7 +915,7 @@ struct traits<TensorStridingSlicingOp<StartIndices, StopIndices, Strides, XprTyp
 template<typename StartIndices, typename StopIndices, typename Strides, typename XprType>
 struct eval<TensorStridingSlicingOp<StartIndices, StopIndices, Strides, XprType>, Eigen::Dense>
 {
-  typedef const TensorStridingSlicingOp<StartIndices, StopIndices, Strides, XprType>& type;
+  typedef const TensorStridingSlicingOp<StartIndices, StopIndices, Strides, XprType>EIGEN_DEVICE_REF type;
 };
 
 template<typename StartIndices, typename StopIndices, typename Strides, typename XprType>
@@ -965,6 +992,8 @@ struct TensorEvaluator<const TensorStridingSlicingOp<StartIndices, StopIndices, 
   typedef typename XprType::Scalar Scalar;
   typedef typename XprType::CoeffReturnType CoeffReturnType;
   typedef typename PacketType<CoeffReturnType, Device>::type PacketReturnType;
+  typedef StorageMemory<CoeffReturnType, Device> Storage;
+  typedef typename Storage::Type EvaluatorPointerType;
   typedef Strides Dimensions;
 
   enum {
@@ -979,44 +1008,50 @@ struct TensorEvaluator<const TensorStridingSlicingOp<StartIndices, StopIndices, 
   };
 
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE TensorEvaluator(const XprType& op, const Device& device)
-      : m_impl(op.expression(), device), m_device(device), m_strides(op.strides()), m_exprStartIndices(op.startIndices()), m_exprStopIndices(op.stopIndices())
+      : m_impl(op.expression(), device),
+        m_device(device),
+        m_strides(op.strides())
   {
     // Handle degenerate intervals by gracefully clamping and allowing m_dimensions to be zero
-    DSizes<Index,NumDims> startIndicesClamped, stopIndicesClamped;
-    m_is_identity = true;
-    for (Index i = 0; i < internal::array_size<Dimensions>::value; ++i) {
-      if (m_strides[i] != 1 || op.startIndices()[i] != 0 ||
-          op.stopIndices()[i] != (m_impl.dimensions()[i] - 1)) {
-        m_is_identity = false;
-      }
-
+    DSizes<Index, NumDims> startIndicesClamped, stopIndicesClamped;
+    for (ptrdiff_t i = 0; i < internal::array_size<Dimensions>::value; ++i) {
       eigen_assert(m_strides[i] != 0 && "0 stride is invalid");
-      if(m_strides[i]>0){
-        startIndicesClamped[i] = clamp(op.startIndices()[i], 0, m_impl.dimensions()[i]);
-        stopIndicesClamped[i] = clamp(op.stopIndices()[i], 0, m_impl.dimensions()[i]);
-      }else{
-      /* implies m_strides[i]<0 by assert */
-        startIndicesClamped[i] = clamp(op.startIndices()[i], -1, m_impl.dimensions()[i] - 1);
-        stopIndicesClamped[i] = clamp(op.stopIndices()[i], -1, m_impl.dimensions()[i] - 1);
+      if (m_strides[i] > 0) {
+        startIndicesClamped[i] =
+            clamp(op.startIndices()[i], 0, m_impl.dimensions()[i]);
+        stopIndicesClamped[i] =
+            clamp(op.stopIndices()[i], 0, m_impl.dimensions()[i]);
+      } else {
+        /* implies m_strides[i] < 0 by assert */
+        startIndicesClamped[i] =
+            clamp(op.startIndices()[i], -1, m_impl.dimensions()[i] - 1);
+        stopIndicesClamped[i] =
+            clamp(op.stopIndices()[i], -1, m_impl.dimensions()[i] - 1);
       }
       m_startIndices[i] = startIndicesClamped[i];
     }
 
-    const typename TensorEvaluator<ArgType, Device>::Dimensions& input_dims = m_impl.dimensions();
+    typedef typename TensorEvaluator<ArgType, Device>::Dimensions InputDimensions;
+    const InputDimensions& input_dims = m_impl.dimensions();
 
     // check for degenerate intervals and compute output tensor shape
-    bool degenerate = false;;
-    for(int i = 0; i < NumDims; i++){
+    bool degenerate = false;
+    m_is_identity = true;
+    for (int i = 0; i < NumDims; i++) {
       Index interval = stopIndicesClamped[i] - startIndicesClamped[i];
-      if(interval == 0 || ((interval<0) != (m_strides[i]<0))){
+      if (interval == 0 || ((interval < 0) != (m_strides[i] < 0))) {
         m_dimensions[i] = 0;
         degenerate = true;
-      }else{
-        m_dimensions[i] = interval / m_strides[i]
-                          + (interval % m_strides[i] != 0 ? 1 : 0);
+      } else {
+        m_dimensions[i] =
+            (interval / m_strides[i]) + (interval % m_strides[i] != 0 ? 1 : 0);
         eigen_assert(m_dimensions[i] >= 0);
       }
+      if (m_strides[i] != 1 || interval != m_impl.dimensions()[i]) {
+        m_is_identity = false;
+      }
     }
+
     Strides output_dims = m_dimensions;
 
     if (static_cast<int>(Layout) == static_cast<int>(ColMajor)) {
@@ -1058,7 +1093,7 @@ struct TensorEvaluator<const TensorStridingSlicingOp<StartIndices, StopIndices, 
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const Dimensions& dimensions() const { return m_dimensions; }
 
 
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE bool evalSubExprsIfNeeded(CoeffReturnType*) {
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE bool evalSubExprsIfNeeded(EvaluatorPointerType) {
     m_impl.evalSubExprsIfNeeded(NULL);
     return true;
   }
@@ -1080,30 +1115,28 @@ struct TensorEvaluator<const TensorStridingSlicingOp<StartIndices, StopIndices, 
     return m_impl.costPerCoeff(vectorized) + TensorOpCost(0, 0, m_is_identity ? 1 : NumDims);
   }
 
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE typename Eigen::internal::traits<XprType>::PointerType data() const {
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE typename Storage::Type data() const {
     return NULL;
   }
-
-  //use by sycl
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const StartIndices& exprStartIndices() const { return m_exprStartIndices; }
-  //use by sycl
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE  const StartIndices& exprStopIndices() const { return m_exprStopIndices; }
-  //use by sycl
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE  const StartIndices& strides() const { return m_strides; }
-  /// used by sycl
-  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const TensorEvaluator<ArgType, Device>& impl() const{return m_impl;}
-
+#ifdef EIGEN_USE_SYCL
+  // binding placeholder accessors to a command group handler for SYCL
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE void bind(cl::sycl::handler &cgh) const {
+    m_impl.bind(cgh);
+  }
+#endif
  protected:
   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Index srcCoeff(Index index) const
   {
     Index inputIndex = 0;
     if (static_cast<int>(Layout) == static_cast<int>(ColMajor)) {
+      EIGEN_UNROLL_LOOP
       for (int i = NumDims - 1; i >= 0; --i) {
         const Index idx = index / m_fastOutputStrides[i];
         inputIndex += idx * m_inputStrides[i] + m_offsets[i];
         index -= idx * m_outputStrides[i];
       }
     } else {
+      EIGEN_UNROLL_LOOP
       for (int i = 0; i < NumDims; ++i) {
         const Index idx = index / m_fastOutputStrides[i];
         inputIndex += idx * m_inputStrides[i] + m_offsets[i];
@@ -1114,7 +1147,7 @@ struct TensorEvaluator<const TensorStridingSlicingOp<StartIndices, StopIndices, 
   }
 
   static EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE Index clamp(Index value, Index min, Index max) {
-#ifndef __SYCL_DEVICE_ONLY__
+#ifndef SYCL_DEVICE_ONLY
     return numext::maxi(min, numext::mini(max,value));
 #else
     return cl::sycl::clamp(value, min, max);
@@ -1126,15 +1159,11 @@ struct TensorEvaluator<const TensorStridingSlicingOp<StartIndices, StopIndices, 
   array<Index, NumDims> m_inputStrides;
   bool m_is_identity;
   TensorEvaluator<ArgType, Device> m_impl;
-  const Device& m_device;
+  const Device EIGEN_DEVICE_REF m_device;
   DSizes<Index, NumDims> m_startIndices; // clamped startIndices
   DSizes<Index, NumDims> m_dimensions;
   DSizes<Index, NumDims> m_offsets; // offset in a flattened shape
   const Strides m_strides;
-  //use by sycl
-  const StartIndices m_exprStartIndices;
-  //use by sycl
-  const StopIndices m_exprStopIndices;
 };
 
 // Eval as lvalue

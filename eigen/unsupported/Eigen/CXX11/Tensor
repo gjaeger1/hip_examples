@@ -40,6 +40,8 @@
   * \code
   * #include <Eigen/CXX11/Tensor>
   * \endcode
+  *
+  * Much of the documentation can be found \ref eigen_tensors "here".
   */
 
 #include <cmath>
@@ -71,10 +73,6 @@ typedef unsigned __int64 uint64_t;
 #include <time.h>
 #endif
 
-#if defined(EIGEN_USE_LIBXSMM)
-#include "libxsmm.h"
-#endif
-
 #ifdef EIGEN_USE_THREADS
 #include "ThreadPool"
 #endif
@@ -100,6 +98,9 @@ typedef unsigned __int64 uint64_t;
 #include "src/Tensor/TensorDeviceDefault.h"
 #include "src/Tensor/TensorDeviceThreadPool.h"
 #include "src/Tensor/TensorDeviceGpu.h"
+#ifndef gpu_assert
+#define gpu_assert(x)
+#endif
 #include "src/Tensor/TensorDeviceSycl.h"
 #include "src/Tensor/TensorIndexList.h"
 #include "src/Tensor/TensorDimensionList.h"

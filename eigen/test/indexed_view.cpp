@@ -15,6 +15,14 @@
 #ifdef EIGEN_TEST_PART_3
 // Make sure we also check c++98 max implementation
 #define EIGEN_MAX_CPP_VER 03
+
+// We need to disable this warning when compiling with c++11 while limiting Eigen to c++98
+// Ideally we would rather configure the compiler to build in c++98 mode but this needs
+// to be done at the CMakeLists.txt level.
+#if defined(__GNUC__) && (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8))
+  #pragma GCC diagnostic ignored "-Wdeprecated"
+#endif
+
 #endif
 
 #include <valarray>
@@ -87,7 +95,11 @@ void check_indexed_view()
   ArrayXd a = ArrayXd::LinSpaced(n,0,n-1);
   Array<double,1,Dynamic> b = a.transpose();
 
-  ArrayXXi A = ArrayXXi::NullaryExpr(n,n, std::ptr_fun(encode));
+  #if EIGEN_COMP_CXXVER>=14
+  ArrayXXi A = ArrayXXi::NullaryExpr(n,n, std::ref(encode));
+  #else
+  ArrayXXi A = ArrayXXi::NullaryExpr(n,n, std::ptr_fun(&encode));
+  #endif
 
   for(Index i=0; i<n; ++i)
     for(Index j=0; j<n; ++j)
@@ -327,8 +339,8 @@ void check_indexed_view()
     VERIFY_IS_APPROX( A(B.RowsAtCompileTime, 1), A(4,1) );
     VERIFY_IS_APPROX( A(B.RowsAtCompileTime-1, B.ColsAtCompileTime-1), A(3,3) );
     VERIFY_IS_APPROX( A(B.RowsAtCompileTime, B.ColsAtCompileTime), A(4,4) );
-    const Index I = 3, J = 4;
-    VERIFY_IS_APPROX( A(I,J), A(3,4) );
+    const Index I_ = 3, J_ = 4;
+    VERIFY_IS_APPROX( A(I_,J_), A(3,4) );
   }
 
   // check extended block API
@@ -399,6 +411,19 @@ void check_indexed_view()
   VERIFY_IS_EQUAL( A(i,i), A.coeff(i_sizet, i) );
   VERIFY_IS_EQUAL( A(i,i), A.coeff(i_sizet, i_short) );
   VERIFY_IS_EQUAL( A(i,i), A.coeff(5, i_sizet) );
+
+  // Regression test for Max{Rows,Cols}AtCompileTime
+  {
+    Matrix3i A3 = Matrix3i::Random();
+    ArrayXi ind(5); ind << 1,1,1,1,1;
+    VERIFY_IS_EQUAL( A3(ind,ind).eval(), MatrixXi::Constant(5,5,A3(1,1)) );
+  }
+
+  // Regression for bug 1736
+  {
+    VERIFY_IS_APPROX(A(all, eii).col(0).eval(), A.col(eii(0)));
+    A(all, eii).col(0) = A.col(eii(0));
+  }
 
 }
 

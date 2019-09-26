@@ -3075,3 +3075,12 @@ data/src/Core/Map.h.i
 data/test/eigensolver_generic.cpp.i
 data/failtest/ref_1.cpp.i
 data/Eigen/src/Core/arch/MSA/Complex.h.i
+data/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsHalf.h.i
+data/unsupported/Eigen/CXX11/src/Tensor/TensorBlockV2.h.i
+data/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsImpl.h.i
+data/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsFunctors.h.i
+data/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsArrayAPI.h.i
+data/unsupported/test/bessel_functions.cpp.i
+data/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsPacketMath.h.i
+data/unsupported/test/cxx11_tensor_block_io.cpp.i
+data/unsupported/test/cxx11_tensor_block_eval.cpp.i

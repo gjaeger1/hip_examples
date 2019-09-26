@@ -33,6 +33,7 @@ data/lapack/iladlc.f.i
 data/test/eigen2/inverse.cpp.i
 data/unsupported/test/cxx11_tensor_uint128.cpp.i
 data/test/eigen2/eigen2_sparse_vector.cpp.i
+data/doc/TutorialSTL.dox.i
 data/Eigen/src/EigenSolver/Tridiagonalization.h.i
 data/disabled/ompbenchmark.cpp.i
 data/bench/benchmarkSlice.cpp.i
@@ -199,6 +200,7 @@ data/doc/snippets/MatrixBase_isOrthogonal.cpp.i
 data/doc/TopicLinearAlgebraDecompositions.dox.i
 data/tvmet-1.7.1/examples/ray.cc.i
 data/test/mapstride.cpp.i
+data/test/solverbase.h.i
 data/src/internal/Minor.h.i
 data/test/bdcsvd.cpp.i
 data/bench/btl/generic_bench/bench.hh.i
@@ -332,6 +334,7 @@ data/bench/btl/libs/STL/main.cpp.i
 data/tvmet-1.7.1/include/tvmet/xpr/MMProductTransposed.h.i
 data/lapack/complex_double.cpp.i
 data/unsupported/test/cxx11_tensor_volume_patch.cpp.i
+data/failtest/initializer_list_1.cpp.i
 data/Eigen/src/Core/GlobalFunctions.h.i
 data/Eigen/src/Core/products/GeneralMatrixMatrixTriangular_BLAS.h.i
 data/Eigen/src/Core/Reverse.h.i
@@ -355,6 +358,7 @@ data/tvmet-1.7.1/testsuite/TestUnFunc.cc.i
 data/unsupported/test/matrix_functions.h.i
 data/doc/snippets/MatrixBase_colwise_iterator_cxx11.cpp.i
 data/blas/f2c/dsbmv.c.i
+data/doc/snippets/Matrix_initializer_list_cxx11.cpp.i
 data/tvmet-1.7.1/testsuite/TestMatrixEval.cc.i
 data/doc/examples/class_DynBlock.cpp.i
 data/doc/snippets/RealQZ_compute.cpp.i
@@ -406,6 +410,7 @@ data/unsupported/Eigen/SVD.i
 data/Eigen/src/Eigenvalues/ComplexSchur_LAPACKE.h.i
 data/test/eigen2/sparse_vector.cpp.i
 data/doc/snippets/PartialRedux_squaredNorm.cpp.i
+data/doc/snippets/Array_variadic_ctor_cxx11.cpp.i
 data/test/inverse.cpp.i
 data/failtest/ldlt_int.cpp.i
 data/lapack/second_NONE.f.i
@@ -522,6 +527,7 @@ data/src/Core/Matrix.h.i
 data/Eigen/src/Core/arch/AltiVec/PacketMath.h.i
 data/doc/I01_TopicLazyEvaluation.dox.i
 data/doc/snippets/Cwise_greater.cpp.i
+data/test/initializer_list_construction.cpp.i
 data/Eigen/src/QR/ColPivHouseholderQR_LAPACKE.h.i
 data/doc/snippets/MatrixBase_zero_int_int.cpp.i
 data/cmake/CheckLongLong.cmake.i
@@ -547,6 +553,7 @@ data/doc/TopicScalarTypes.dox.i
 data/blas/complex_double.cpp.i
 data/unsupported/Eigen/src/BDCSVD/BDCSVD.h.i
 data/test/mapstaticmethods.cpp.i
+data/doc/snippets/Matrix_initializer_list_vector_cxx11.cpp.i
 data/test/upperbidiagonalization.cpp.i
 data/doc/snippets/MatrixBase_template_int_int_bottomLeftCorner.cpp.i
 data/Eigen/MetisSupport.i
@@ -720,6 +727,7 @@ data/unsupported/Eigen/src/SparseExtra/SparseLU.h.i
 data/Eigen/SuperLUSupport.i
 data/doc/snippets/QR_solve.cpp.i
 data/Eigen/src/Geometry/arch/CMakeLists.txt.i
+data/Eigen/src/Core/arch/Default/GenericPacketMathFunctionsFwd.h.i
 data/tvmet-1.7.1/doc/faq.dox.i
 data/scripts/eigen_gen_split_test_help.cmake.i
 data/test/stddeque.cpp.i
@@ -794,6 +802,7 @@ data/Eigen/src/Core/Visitor.h.i
 data/blas/ztbmv.f.i
 data/tvmet-1.7.1/examples/diag.cc.i
 data/doc/TutorialReshapeSlicing.dox.i
+data/Eigen/src/Core/arch/AVX512/TypeCasting.h.i
 data/unsupported/Eigen/CXX11/src/Core/util/CMakeLists.txt.i
 data/unsupported/test/cxx11_tensor_image_patch.cpp.i
 data/Eigen/src/Eigen2Support/Geometry/CMakeLists.txt.i
@@ -901,6 +910,7 @@ data/doc/snippets/TopicAliasing_mult1.cpp.i
 data/bench/tensors/tensor_benchmarks_gpu.cu.i
 data/Eigen/src/Core/products/SelfadjointMatrixVector_MKL.h.i
 data/unsupported/test/NumericalDiff.cpp.i
+data/doc/snippets/Array_initializer_list_23_cxx11.cpp.i
 data/bench/perf_monitoring/gemm/trmv_lo.cpp.i
 data/doc/snippets/MatrixBase_template_int_int_topLeftCorner.cpp.i
 data/tvmet-1.7.1/Makefile.am.i
@@ -985,6 +995,7 @@ data/tvmet-1.7.1/include/tvmet/VectorImpl.h.i
 data/failtest/swap_2.cpp.i
 data/scripts/mctestr.in.i
 data/doc/ClassHierarchy.dox.i
+data/test/diagonal_matrix_variadic_ctor.cpp.i
 data/doc/snippets/Tutorial_reshaped_vs_resize_1.cpp.i
 data/Eigen/src/Core/StlIterators.h.i
 data/test/eigen2/eigen2_linearstructure.cpp.i
@@ -1102,6 +1113,7 @@ data/doc/snippets/MatrixBase_isOnes.cpp.i
 data/doc/buildexamplelist.sh.i
 data/unsupported/test/cxx11_tensor_math.cpp.i
 data/unsupported/test/cxx11_tensor_reverse.cpp.i
+data/Eigen/src/Core/arch/Default/Half.h.i
 data/Eigen/src/Sparse/SparseFuzzy.h.i
 data/unsupported/Eigen/src/Skyline/SkylineProduct.h.i
 data/Eigen/src/Core/functors/UnaryFunctors.h.i
@@ -1143,6 +1155,7 @@ data/bench/btl/libs/C_BLAS/C_BLAS_interface.hh.i
 data/test/eigen2/eigen2_sparse_solvers.cpp.i
 data/Eigen/src/misc/Kernel.h.i
 data/unsupported/Eigen/CXX11/src/Tensor/TensorContractionBlocking.h.i
+data/doc/snippets/Array_initializer_list_cxx11.cpp.i
 data/unsupported/Eigen/CXX11/src/Tensor/TensorDeviceDefault.h.i
 data/Eigen/src/Eigenvalues/SelfAdjointEigenSolver.h.i
 data/unsupported/test/cxx11_tensor_cuda.cpp.i
@@ -1625,6 +1638,7 @@ data/failtest/ternary_1.cpp.i
 data/Eigen/src/Core/CwiseUnaryView.h.i
 data/test/array.cpp.i
 data/test/product_syrk.cpp.i
+data/failtest/initializer_list_2.cpp.i
 data/unsupported/Eigen/CXX11/src/util/CMakeLists.txt.i
 data/bench/perf_monitoring/gemm/gemv_square_settings.txt.i
 data/Eigen/src/Eigen2Support/Flagged.h.i
@@ -1638,6 +1652,7 @@ data/Eigen/src/Sparse/DynamicSparseMatrix.h.i
 data/unsupported/test/cxx11_tensor_of_const_values.cpp.i
 data/tvmet-1.7.1/examples/Makefile.am.i
 data/doc/snippets/ComplexSchur_matrixT.cpp.i
+data/doc/snippets/DenseBase_LinSpaced_seq_deprecated.cpp.i
 data/src/internal/MatrixStorage.h.i
 data/Eigen/src/LU/PartialPivLU_MKL.h.i
 data/bench/sparse_setter.cpp.i
@@ -1647,6 +1662,7 @@ data/Eigen/src/Geometry/Umeyama.h.i
 data/Eigen/src/Array/Reverse.h.i
 data/Eigen/src/Geometry/HyperPlane.h.i
 data/doc/QuickStartGuide.dox.i
+data/doc/snippets/Array_initializer_list2_cxx11.cpp.i
 data/unsupported/test/cxx11_tensor_of_strings.cpp.i
 data/blas/testing/cblat3.dat.i
 data/unsupported/test/bdcsvd.cpp.i
@@ -1731,6 +1747,7 @@ data/tvmet-1.7.1/testsuite/TestXprVectorOperators.h.i
 data/blas/f2c/complexdots.c.i
 data/demos/opengl/gpuhelper.cpp.i
 data/doc/A05_PortingFrom2To3.dox.i
+data/doc/snippets/Array_initializer_list_vector_cxx11.cpp.i
 data/doc/examples/make_circulant2.cpp.i
 data/unsupported/Eigen/src/Eigenvalues/CMakeLists.txt.i
 data/blas/f2c/ztbmv.c.i
@@ -1863,6 +1880,7 @@ data/Eigen/PaStiXSupport.i
 data/tvmet-1.7.1/examples/matrix_col.cc.i
 data/doc/snippets/MatrixBase_cwiseMin.cpp.i
 data/blas/fortran/chpmv.f.i
+data/Eigen/src/Core/arch/SYCL/SyclMemoryModel.h.i
 data/failtest/cwiseunaryview_nonconst_ctor_on_const_xpr.cpp.i
 data/doc/snippets/Cwise_isinf.cpp.i
 data/bench/perf_monitoring/gemm.cpp.i
@@ -2074,6 +2092,7 @@ data/bench/perf_monitoring/gemm/changesets.txt.i
 data/bench/perf_monitoring/resources/chart_footer.html.i
 data/Eigen/src/LevenbergMarquardt/covar.h.i
 data/Eigen/src/Core/Coeffs.h.i
+data/doc/snippets/Tutorial_std_sort_rows_cxx11.cpp.i
 data/doc/PreprocessorDirectives.dox.i
 data/Eigen/src/QR/CompleteOrthogonalDecomposition.h.i
 data/tvmet-1.7.1/testsuite/Makefile.in.i
@@ -2245,6 +2264,7 @@ data/unsupported/test/dlmalloc.h.i
 data/test/sparseLM.cpp.i
 data/scripts/check.in.i
 data/bench/basicbenchmark.cpp.i
+data/doc/snippets/Matrix_initializer_list2_cxx11.cpp.i
 data/test/evaluators.cpp.i
 data/unsupported/Eigen/src/IterativeSolvers/CMakeLists.txt.i
 data/Eigen/src/StlSupport/CMakeLists.txt.i
@@ -2356,6 +2376,7 @@ data/unsupported/Eigen/src/SpecialFunctions/CMakeLists.txt.i
 data/doc/snippets/PartialRedux_norm.cpp.i
 data/test/resize.cpp.i
 data/Eigen/Core/Product.h.i
+data/unsupported/test/cxx11_tensor_thread_local.cpp.i
 data/test/eigen2/eigen2_eigensolver.cpp.i
 data/tvmet-1.7.1/include/tvmet/xpr/Identity.h.i
 data/doc/snippets/MatrixBase_cwiseMax.cpp.i
@@ -2433,6 +2454,7 @@ data/doc/examples/tut_matrix_resize.cpp.i
 data/Eigen/src/Eigen2Support/CwiseOperators.h.i
 data/demos/opengl/gpuhelper.h.i
 data/bench/perf_monitoring/gemm/gemv_common.h.i
+data/Eigen/src/Core/arch/Default/TypeCasting.h.i
 data/tvmet-1.7.1/configure.ac.i
 data/doc/snippets/Tutorial_range_for_loop_1d_cxx11.cpp.i
 data/test/eigen2/eigen2_unalignedassert.cpp.i
@@ -2580,6 +2602,7 @@ data/doc/snippets/MatrixBase_reshaped_auto.cpp.i
 data/scripts/buildtests.in.i
 data/unsupported/Eigen/CXX11/src/Tensor/TensorConvolution.h.i
 data/test/mapped_matrix.cpp.i
+data/doc/snippets/Matrix_variadic_ctor_cxx11.cpp.i
 data/Eigen/src/Core/arch/SYCL/PacketMath.h.i
 data/doc/tutorial.cpp.i
 data/bench/btl/libs/ATLAS/ATLAS_LU_solve_interface.hh.i
@@ -2746,6 +2769,7 @@ data/src/Core/Fuzzy.h.i
 data/tvmet-1.7.1/testsuite/TestXprVectorFunctions.h.i
 data/doc/snippets/MatrixBase_reshape_int_int.cpp.i
 data/test/eigen2/eigen2_array.cpp.i
+data/test/type_alias.cpp.i
 data/Eigen/src/QR/CMakeLists.txt.i
 data/tvmet-1.7.1/testsuite/CMakeLists.txt.i
 data/bench/btl/libs/tensors/main_linear.cpp.i
@@ -2878,6 +2902,7 @@ data/test/real_qz.cpp.i
 data/test/sparse.h.i
 data/unsupported/doc/examples/CMakeLists.txt.i
 data/demos/opengl/trackball.cpp.i
+data/doc/snippets/Matrix_initializer_list_23_cxx11.cpp.i
 data/doc/Pitfalls.dox.i
 data/blas/fortran/drotm.f.i
 data/bench/BenchSparseUtil.h.i
@@ -2997,6 +3022,7 @@ data/unsupported/Eigen/src/NonLinear/HybridNonLinearSolver.h.i
 data/doc/examples/class_Column.cpp.i
 data/Eigen/src/SparseLU/CMakeLists.txt.i
 data/Eigen/src/Core/PacketMath.h.i
+data/test/nestbyvalue.cpp.i
 data/lapack/cladiv.f.i
 data/debug/msvc/eigen.natvis.i
 data/unsupported/Eigen/CXX11/src/Tensor/TensorSyclFunctors.h.i
