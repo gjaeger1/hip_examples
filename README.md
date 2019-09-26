@@ -8,7 +8,7 @@ In this repository, you can find four small examples on how to use HIP. The exam
 
 * hip_classes: An adapted version of [square](https://github.com/ROCm-Developer-Tools/HIP/tree/master/samples/0_Intro/square) which uses classes within the GPU kernel.
 * hip_classes_crtp: Implementing the [CRTP](https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern) design pattern to dynamically construct GPU kernel based on template programming.
-* hip_eigen: An adapted version of [square](https://github.com/ROCm-Developer-Tools/HIP/tree/master/samples/0_Intro/square) which uses the [Eigen 3 library](http://eigen.tuxfamily.org/index.php?title=Main_Page) within the GPU kernel. Note that the version stored in this repository tracks the development branch 'HIP_fixes' of the library. The default branch does not work with HIP, currently.
+* hip_eigen: An adapted version of [square](https://github.com/ROCm-Developer-Tools/HIP/tree/master/samples/0_Intro/square) which uses the [Eigen 3 library](http://eigen.tuxfamily.org/index.php?title=Main_Page) within the GPU kernel.
 * thrust_bounding_box: One example from the [ROCm Thrust](https://github.com/ROCmSoftwarePlatform/Thrust/blob/master/examples/bounding_box.cu) library. It shows that we can use Thrust with CUDA and HIP without changes.
 * thrust_abstract_class: An example on how to use abstract classes as interfaces to provide GPU and CPU operations simultaneously. 
 * thrust_stateful_functor: An example on how to use functors having states within thrust and thrust::transform.
@@ -21,14 +21,15 @@ As ROCm/Thrust is included as a git submodule use `git clone --recursive` to clo
 
 ## Dependencies
 
-As Eigen 3 is a Mercurial repository, a copy of its 'HIP_fixes' branch is included.
+The required Eigen3 version is not released, but can be found in the default branch of their development repository. 
+For convenience, we included the current development version.
 Dependencies that need to be installed separately:
 
 * boost
 * cmake
 * HIP
-* CUDA (on Nvidia platforms)
-* ROCm (on AMD platforms)
+* CUDA + Thrust (on Nvidia platforms)
+* ROCm + [rocThrust](https://github.com/ROCmSoftwarePlatform/rocThrust) + [rocPRIM](https://github.com/ROCmSoftwarePlatform/rocPRIM) (on AMD platforms)
 
 ## Compilation
 
@@ -41,10 +42,10 @@ cmake ..
 make
 ```
 
-After a successfull compilation, you should see the individual executables in the 'build' folder.
+After a successful compilation, you should see the individual executables in the 'build' folder.
 
 ## Docker
 
 Provided that the Linux host has installed appropriate drivers, one can use [docker](https://docs.docker.com/) images to obtain ready-to-use coding environments.
-[rocm/rocm-terminal](https://hub.docker.com/r/rocm/rocm-terminal) is a docker image based on Ubuntu 16.04.
+[gjaeger1234/hip_rocm](https://cloud.docker.com/repository/docker/gjaeger1234/hip_rocm) is a docker image based on Ubuntu 18.04.
 [gjaeger1234/hip_cuda](https://hub.docker.com/r/gjaeger1234/hip_cuda) is a docker image integrating HIP with CUDA based on Ubuntu 18.04.
