@@ -1,4 +1,4 @@
- #include <thrust/transform_reduce.h>
+#include <thrust/transform_reduce.h>
 #include <thrust/device_vector.h>
 #include <thrust/pair.h>
 #include <thrust/random.h>
@@ -18,6 +18,9 @@ struct point2d
   
   __host__ __device__
   point2d(float _x, float _y) : x(_x), y(_y) {}
+  
+  __host__ __device__
+  point2d& operator=(const point2d& other) = default;
 };
 
 // bounding box type
@@ -38,7 +41,10 @@ struct bbox
   bbox(const point2d &ll, const point2d &ur)
     : lower_left(ll), upper_right(ur)
   {}
-
+    
+  __host__ __device__
+  bbox& operator=(const bbox& other) = default;
+    
   point2d lower_left, upper_right;
 };
 
@@ -65,18 +71,18 @@ int main(void)
   thrust::uniform_real_distribution<float> u01(0.0f, 1.0f);
   
   // allocate storage for points
-  thrust::device_vector<point2d> points(N);
+  thrust::device_vector<bbox> points(N);
   
   // generate some random points in the unit square
   for(size_t i = 0; i < N; i++)
   {
       float x = u01(rng);
       float y = u01(rng);
-      points[i] = point2d(x,y);
+      points[i] = bbox(point2d(x,y));
   }
   
   // initial bounding box contains first point
-  bbox init = bbox(points[0], points[0]);
+  bbox init = points[0];
   
   // binary reduction operation
   bbox_reduction binary_op;

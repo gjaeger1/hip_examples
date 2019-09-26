@@ -3,7 +3,6 @@ project(hip_examples)
 
 # includes
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/eigen)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Thrust)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # packages
@@ -29,9 +28,23 @@ else()
 	message(FATAL_ERROR "Could not find HIP. Ensure that HIP is either installed in /opt/rocm/hip or the variable HIP_PATH is set to point to the right location.")
 endif()
 
+
 set(HIPCC_OPTIONS)
 set(HCC_OPTIONS)
 set(NVCC_OPTIONS)
+
+
+if(${HIP_PLATFORM} STREQUAL "hcc")
+    # On ROCm rocThrust requires rocPRIM
+    find_package(rocprim REQUIRED CONFIG PATHS "/opt/rocm/rocprim")
+
+    # "/opt/rocm" - default install prefix
+    find_package(rocthrust REQUIRED CONFIG PATHS "/opt/rocm/rocthrust")
+endif()
+
+if(${HIP_PLATFORM} STREQUAL "nvcc")
+    set(NVCC_OPTIONS --expt-relaxed-constexpr)
+endif()
 	
 
 # list sources and names for targets
